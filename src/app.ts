@@ -60,6 +60,10 @@ function updateNotificationUI(): void {
     notifyBtn.disabled = true;
     return;
   }
+  if (window.location.protocol === 'file:') {
+    notifStatusEl.textContent = 'Needs HTTPS or Localhost';
+    return;
+  }
   if (Notification.permission === 'granted') {
     notifStatusEl.textContent = 'Alerts Active';
     notifyBtn.textContent = 'Test Alert';
@@ -207,7 +211,14 @@ function openModal(dateKey: string): void {
 }
 
 notifyBtn.addEventListener('click', async () => {
-  if (!('Notification' in window)) return;
+  if (!('Notification' in window)) {
+    notifStatusEl.textContent = 'Browser Unsupported';
+    return;
+  }
+  if (window.location.protocol === 'file:') {
+    notifStatusEl.textContent = 'Needs HTTPS or Localhost';
+    return;
+  }
   if (Notification.permission === 'granted') {
     triggerNotification({
       id: 'test',
@@ -219,8 +230,18 @@ notifyBtn.addEventListener('click', async () => {
     });
     return;
   }
-  await Notification.requestPermission();
+  const result = await Notification.requestPermission();
   updateNotificationUI();
+  if (result === 'granted') {
+    triggerNotification({
+      id: 'test',
+      date: toDateKey(new Date()),
+      time: toTimeKey(new Date()),
+      title: 'Alerts Enabled!',
+      color: '#059669',
+      notes: 'You will now receive on-time event alerts.',
+    });
+  }
 });
 
 form.addEventListener('submit', (e) => {
