@@ -304,70 +304,81 @@ form.addEventListener('submit', (e) => {
   e.preventDefault();
   const existingId = editEventIdInput.value;
   const title = (document.getElementById('eventTitle') as HTMLInputElement).value.trim();
-const date = (document.getElementById('eventDate') as HTMLInputElement).value; 
-const time = (document.getElementById('eventTime') as HTMLInputElement).value; 
-const color = (document.getElementById('eventColor') as HTMLSelectElement).value; 
-const notes = (document.getElementById('eventNotes') as HTMLTextAreaElement).value.trim();
-if (!title || !date) return;
-if (existingId) { 
-const index = events.findIndex((item) => item.id === existingId); 
-if (index !== -1) { 
-const prev = events[index]; 
-const rescheduled = prev.date !== date || prev.time !== time; 
-events[index] = { 
-...prev, 
-title, 
-date, 
-time, 
-color, 
-notes, 
-notified: rescheduled? false: prev.notified, 
-}; 
-} 
-} else { 
-events.push({ 
-id: crypto.randomUUID(), 
-date, 
-time, 
-title, 
-color, 
-notes, 
-notified: false, 
-}); 
-}
-selectedDateKey = date; 
-saveEvents(); 
-modal.close(); 
-renderAll(); 
-checkDueEvents(); 
+  const date = (document.getElementById('eventDate') as HTMLInputElement).value;
+  const time = (document.getElementById('eventTime') as HTMLInputElement).value;
+  const color = (document.getElementById('eventColor') as HTMLSelectElement).value;
+  const notes = (document.getElementById('eventNotes') as HTMLTextAreaElement).value.trim();
+
+  if (!title || !date) return;
+
+  if (existingId) {
+    const index = events.findIndex((item) => item.id === existingId);
+    if (index !== -1) {
+      const prev = events[index];
+      const rescheduled = prev.date !== date || prev.time !== time;
+      events[index] = {
+        ...prev,
+        title,
+        date,
+        time,
+        color,
+        notes,
+        notified: rescheduled ? false : prev.notified,
+      };
+    }
+  } else {
+    events.push({
+      id: crypto.randomUUID(),
+      date,
+      time,
+      title,
+      color,
+      notes,
+      notified: false,
+    });
+  }
+
+  selectedDateKey = date;
+  saveEvents();
+  modal.close();
+  renderAll();
+  checkDueEvents();
 });
-document.getElementById('newEventBtn')?.addEventListener('click', () => openCreateModal(selectedDateKey)); 
+
+document.getElementById('newEventBtn')?.addEventListener('click', () => openCreateModal(selectedDateKey));
 document.getElementById('cancelModal')?.addEventListener('click', () => modal.close());
-document.getElementById('prevBtn')?.addEventListener('click', () => { 
-viewDate.setMonth(viewDate.getMonth() - 1); 
-renderGrid(); 
+
+document.getElementById('prevBtn')?.addEventListener('click', () => {
+  viewDate.setMonth(viewDate.getMonth() - 1);
+  renderGrid();
 });
-document.getElementById('nextBtn')?.addEventListener('click', () => { 
-viewDate.setMonth(viewDate.getMonth() + 1); 
-renderGrid(); 
+
+document.getElementById('nextBtn')?.addEventListener('click', () => {
+  viewDate.setMonth(viewDate.getMonth() + 1);
+  renderGrid();
 });
-document.getElementById('todayBtn')?.addEventListener('click', () => { 
-viewDate = new Date(); 
-selectedDateKey = toDateKey(viewDate); 
-renderAll(); 
+
+document.getElementById('todayBtn')?.addEventListener('click', () => {
+  viewDate = new Date();
+  selectedDateKey = toDateKey(viewDate);
+  renderAll();
 });
-document.getElementById('exportIcsBtn')?.addEventListener('click', () => { 
-const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CalenderAuto//EN']; 
-events.forEach((ev) => { 
-const dt = ev.date.replace(/-/g, '') + 'T' + ev.time.replace(':', '') + '00'; 
-lines.push('BEGIN:VEVENT', UID:${ev.id}, DTSTART:${dt}, SUMMARY:${ev.title}, ' END:VEVENT' }) 
-;
-const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' }); 
-const link = document.createElement('a'); 
-link.href = URL.createObjectURL(blob); 
-link.download = 'calender-auto.ics'; 
-link.click(); 
+
+document.getElementById('exportIcsBtn')?.addEventListener('click', () => {
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CalenderAuto//EN'];
+  events.forEach((ev) => {
+    const dt = ev.date.replace(/-/g, '') + 'T' + ev.time.replace(':', '') + '00';
+    lines.push('BEGIN:VEVENT', `UID:${ev.id}`, `DTSTART:${dt}`, `SUMMARY:${ev.title}`, 'END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'calender-auto.ics';
+  link.click();
 });
-renderAll(); 
-checkDueEvents(); 
+
+renderAll();
+checkDueEvents();
 setInterval(checkDueEvents, 5000);
