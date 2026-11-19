@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CalenderAuto</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="logo-badge">CA</span>
+        <h1>CalenderAuto</h1>
+      </div>
+
+      <button id="newEventBtn" class="primary full-width">+ New Event</button>
+
+      <div class="agenda-section">
+        <h3 id="selectedDateLabel">Daily Agenda</h3>
+        <div id="dailyAgendaList" class="agenda-list"></div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button id="exportIcsBtn" class="secondary full-width">Export (.ics)</button>
+      </div>
+    </aside>
+
+    <main class="main-view">
+      <header class="topbar">
+        <div class="nav-controls">
+          <button id="todayBtn" class="secondary">Today</button>
+          <button id="prevBtn" aria-label="Previous Month">&larr;</button>
+          <button id="nextBtn" aria-label="Next Month">&rarr;</button>
+          <h2 id="monthLabel">Month Year</h2>
+        </div>
+        <div class="status-pill">Synced Locally</div>
+      </header>
+
+      <div class="calendar-board">
+        <div class="weekdays">
+          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div>
+          <div>Thu</div><div>Fri</div><div>Sat</div>
+        </div>
+        <div id="calendarGrid" class="days-grid"></div>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="eventModal" class="modal">
+    <form id="eventForm" method="dialog">
+      <h3>Schedule on CalenderAuto</h3>
+      <label>
+        Event Title
+        <input type="text" id="eventTitle" placeholder="Team sync, Deep work..." required />
+      </label>
+      <div class="row-inputs">
+        <label>
+          Date
+          <input type="date" id="eventDate" required />
+        </label>
+        <label>
+          Time
+          <input type="time" id="eventTime" value="09:00" required />
+        </label>
+      </div>
+      <label>
+        Category
+        <select id="eventColor">
+          <option value="#4f46e5">Focus (Indigo)</option>
+          <option value="#059669">Personal (Emerald)</option>
+          <option value="#d97706">Meeting (Amber)</option>
+          <option value="#e11d48">Urgent (Rose)</option>
+        </select>
+      </label>
+      <label>
+        Quick Notes
+        <textarea id="eventNotes" rows="2" placeholder="Links, goals, or details..."></textarea>
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="cancelModal" class="secondary">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
