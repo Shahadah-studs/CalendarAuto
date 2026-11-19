@@ -15,7 +15,7 @@
       </div>
 
       <button id="newEventBtn" class="primary full-width">+ New Event</button>
-      <button id="notifyBtn" class="secondary full-width">Enable Alerts</button>
+      <button id="testAlertBtn" class="secondary full-width">Test Alert</button>
 
       <div class="agenda-section">
         <h3 id="selectedDateLabel">Daily Agenda</h3>
@@ -35,7 +35,7 @@
           <button id="nextBtn" aria-label="Next Month">&rarr;</button>
           <h2 id="monthLabel">Month Year</h2>
         </div>
-        <div id="notifStatus" class="status-pill">Alerts Off</div>
+        <div class="status-pill">In-App Alerts Ready</div>
       </header>
 
       <div class="calendar-board">
@@ -47,6 +47,8 @@
       </div>
     </main>
   </div>
+
+  <div id="toastContainer" class="toast-container"></div>
 
   <dialog id="eventModal" class="modal">
     <form id="eventForm" method="dialog">
@@ -88,3 +90,4 @@
   <script type="module" src="app.js"></script>
 </body>
 </html>
+
