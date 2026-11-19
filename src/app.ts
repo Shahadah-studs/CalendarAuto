@@ -8,8 +8,11 @@ interface CalendarEvent {
   notified?: boolean;
 }
 
+type SoundMode = 'bell' | 'retro' | 'pulse' | 'silent';
+
 const STORAGE_KEY = 'calenderauto_events_v1';
 const THEME_KEY = 'calenderauto_theme_v1';
+const SOUND_KEY = 'calenderauto_sound_v1';
 const BASE_TITLE = 'CalenderAuto';
 
 let viewDate = new Date();
@@ -17,6 +20,7 @@ let selectedDateKey = toDateKey(new Date());
 let events: CalendarEvent[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 let audioCtx: AudioContext | null = null;
 let flashInterval: number | null = null;
+let currentSound: SoundMode = (localStorage.getItem(SOUND_KEY) as SoundMode) || 'bell';
 
 const gridEl = document.getElementById('calendarGrid') as HTMLDivElement;
 const monthLabelEl = document.getElementById('monthLabel') as HTMLHeadingElement;
@@ -28,6 +32,14 @@ const modalHeadingEl = document.getElementById('modalHeading') as HTMLHeadingEle
 const editEventIdInput = document.getElementById('editEventId') as HTMLInputElement;
 const toastContainerEl = document.getElementById('toastContainer') as HTMLDivElement;
 const themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonElement;
+const soundSelect = document.getElementById('soundSelect') as HTMLSelectElement;
+
+soundSelect.value = currentSound;
+soundSelect.addEventListener('change', () => {
+  currentSound = soundSelect.value as SoundMode;
+  localStorage.setItem(SOUND_KEY, currentSound);
+  playChime();
+});
 
 function applyTheme(dark: boolean): void {
   document.body.classList.toggle('dark', dark);
@@ -71,19 +83,56 @@ function unlockAudio(): void {
 document.addEventListener('click', unlockAudio, { once: true });
 
 function playChime(): void {
+  if (currentSound === 'silent') return;
   unlockAudio();
   if (!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(1320, audioCtx.currentTime + 0.18);
-  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.45);
+
+  const now = audioCtx.currentTime;
+
+  if (currentSound === 'bell') {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(1320, now + 0.18);
+    gain.gain.setValueAtTime(0.16, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.55);
+  } else if (currentSound === 'retro') {
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, idx) => {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const start = now + idx * 0.08;
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0.14, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.18);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + 0.18);
+    });
+  } else if (currentSound === 'pulse') {
+    [0, 0.16].forEach((offset) => {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const start = now + offset;
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(987.77, start);
+      gain.gain.setValueAtTime(0.08, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.11);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + 0.11);
+    });
+  }
 }
 
 function startTabFlash(alertTitle: string): void {
@@ -296,7 +345,7 @@ document.getElementById('testAlertBtn')?.addEventListener('click', () => {
     time: toTimeKey(new Date()),
     title: 'CalenderAuto Alert',
     color: '#4f46e5',
-    notes: 'Your on-time event alerts and tab flash are active.',
+    notes: 'Testing your selected alert chime and tab flash.',
   });
 });
 
@@ -372,7 +421,8 @@ document.getElementById('exportIcsBtn')?.addEventListener('click', () => {
   });
   lines.push('END:VCALENDAR');
 
-  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' });
+  const blob = new Blob([lines.join('
+')], { type: 'text/calendar' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = 'calender-auto.ics';
