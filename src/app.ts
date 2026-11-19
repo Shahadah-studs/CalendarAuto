@@ -5,6 +5,7 @@ interface CalendarEvent {
   title: string;
   color: string;
   notes: string;
+  notified?: boolean;
 }
 
 const STORAGE_KEY = 'calenderauto_events_v1';
@@ -18,6 +19,8 @@ const agendaListEl = document.getElementById('dailyAgendaList') as HTMLDivElemen
 const selectedDateLabelEl = document.getElementById('selectedDateLabel') as HTMLHeadingElement;
 const modal = document.getElementById('eventModal') as HTMLDialogElement;
 const form = document.getElementById('eventForm') as HTMLFormElement;
+const notifyBtn = document.getElementById('notifyBtn') as HTMLButtonElement;
+const notifStatusEl = document.getElementById('notifStatus') as HTMLDivElement;
 
 function toDateKey(d: Date): string {
   const y = d.getFullYear();
@@ -26,8 +29,73 @@ function toDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function toTimeKey(d: Date): string {
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
 function saveEvents(): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+}
+
+function playChime(): void {
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.18);
+  gain.gain.setValueAtTime(0.15, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.45);
+}
+
+function updateNotificationUI(): void {
+  if (!('Notification' in window)) {
+    notifStatusEl.textContent = 'Not Supported';
+    notifyBtn.disabled = true;
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    notifStatusEl.textContent = 'Alerts Active';
+    notifyBtn.textContent = 'Test Alert';
+  } else if (Notification.permission === 'denied') {
+    notifStatusEl.textContent = 'Alerts Blocked';
+  } else {
+    notifStatusEl.textContent = 'Alerts Off';
+  }
+}
+
+function triggerNotification(ev: CalendarEvent): void {
+  playChime();
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(`CalenderAuto: ${ev.title}`, {
+      body: ev.notes || `Scheduled right now (${ev.time})`,
+    });
+  }
+}
+
+function checkDueEvents(): void {
+  const now = new Date();
+  const todayKey = toDateKey(now);
+  const currentTime = toTimeKey(now);
+  let updated = false;
+
+  events.forEach((ev) => {
+    if (!ev.notified && ev.date === todayKey && ev.time === currentTime) {
+      ev.notified = true;
+      updated = true;
+      triggerNotification(ev);
+    }
+  });
+
+  if (updated) {
+    saveEvents();
+  }
 }
 
 function renderAll(): void {
@@ -138,6 +206,23 @@ function openModal(dateKey: string): void {
   modal.showModal();
 }
 
+notifyBtn.addEventListener('click', async () => {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    triggerNotification({
+      id: 'test',
+      date: toDateKey(new Date()),
+      time: toTimeKey(new Date()),
+      title: 'Notifications are working!',
+      color: '#4f46e5',
+      notes: 'You will get alerted right on time.',
+    });
+    return;
+  }
+  await Notification.requestPermission();
+  updateNotificationUI();
+});
+
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   const title = (document.getElementById('eventTitle') as HTMLInputElement).value.trim();
@@ -155,12 +240,14 @@ form.addEventListener('submit', (e) => {
     title,
     color,
     notes,
+    notified: false,
   });
 
   selectedDateKey = date;
   saveEvents();
   modal.close();
   renderAll();
+  checkDueEvents();
 });
 
 document.getElementById('newEventBtn')?.addEventListener('click', () => openModal(selectedDateKey));
@@ -197,4 +284,7 @@ document.getElementById('exportIcsBtn')?.addEventListener('click', () => {
   link.click();
 });
 
+updateNotificationUI();
 renderAll();
+checkDueEvents();
+setInterval(checkDueEvents, 5000);
