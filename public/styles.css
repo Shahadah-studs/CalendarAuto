@@ -144,6 +144,17 @@ body {
   gap: 0.65rem;
 }
 
+.sound-select {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .status-pill {
   font-size: 0.75rem;
   color: var(--muted);
