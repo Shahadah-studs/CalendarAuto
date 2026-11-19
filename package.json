@@ -1,0 +1,10 @@
+{
+  "name": "calender-auto",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "bash scripts/build.sh"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
