@@ -207,6 +207,57 @@ button.full-width { width: 100%; }
   text-overflow: ellipsis;
 }
 
+.toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 1000;
+  max-width: 340px;
+  width: 100%;
+}
+
+.toast-alert {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left-width: 5px;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  animation: slideIn 0.25s ease-out;
+}
+
+.toast-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.toast-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.toast-notes {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+@keyframes slideIn {
+  from { transform: translateX(110%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
 .modal {
   border: none;
   border-radius: 14px;
@@ -228,3 +279,4 @@ button.full-width { width: 100%; }
   font-family: inherit;
 }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.4rem; }
+
