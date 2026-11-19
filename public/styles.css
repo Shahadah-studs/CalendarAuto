@@ -51,7 +51,7 @@ body {
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .brand {
@@ -70,6 +70,44 @@ body {
 }
 
 .brand h1 { font-size: 1.15rem; font-weight: 700; }
+
+.mood-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mood-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.mood-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+}
+
+.mood-btn {
+  padding: 0.35rem 0;
+  font-size: 1.05rem;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.mood-btn.active {
+  border-color: var(--accent);
+  background: var(--cell-selected);
+  transform: scale(1.04);
+}
 
 .agenda-section {
   flex: 1;
@@ -112,6 +150,22 @@ body {
   gap: 0.3rem;
 }
 
+.join-link-btn {
+  display: inline-block;
+  margin-top: 0.45rem;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 6px;
+  text-decoration: none;
+}
+
+.join-link-btn:hover {
+  opacity: 0.9;
+}
+
 .main-view {
   display: flex;
   flex-direction: column;
@@ -144,14 +198,14 @@ body {
   gap: 0.65rem;
 }
 
-.sound-select {
-  padding: 0.5rem 0.75rem;
+.topbar-right select {
+  padding: 0.48rem 0.65rem;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
+  font-size: 0.85rem;
   font-weight: 500;
-  font-family: inherit;
   cursor: pointer;
 }
 
@@ -224,6 +278,12 @@ button.full-width { width: 100%; }
 .day-cell.selected { background: var(--cell-selected); }
 .day-cell.other-month { color: var(--other-month-text); background: var(--other-month-bg); }
 
+.day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .day-number {
   font-size: 0.8rem;
   font-weight: 600;
@@ -238,6 +298,11 @@ button.full-width { width: 100%; }
 .day-cell.today .day-number {
   background: var(--accent);
   color: #fff;
+}
+
+.day-mood {
+  font-size: 0.85rem;
+  line-height: 1;
 }
 
 .event-chip {
