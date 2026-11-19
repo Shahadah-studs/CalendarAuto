@@ -19,8 +19,7 @@ const agendaListEl = document.getElementById('dailyAgendaList') as HTMLDivElemen
 const selectedDateLabelEl = document.getElementById('selectedDateLabel') as HTMLHeadingElement;
 const modal = document.getElementById('eventModal') as HTMLDialogElement;
 const form = document.getElementById('eventForm') as HTMLFormElement;
-const notifyBtn = document.getElementById('notifyBtn') as HTMLButtonElement;
-const notifStatusEl = document.getElementById('notifStatus') as HTMLDivElement;
+const toastContainerEl = document.getElementById('toastContainer') as HTMLDivElement;
 
 function toDateKey(d: Date): string {
   const y = d.getFullYear();
@@ -54,33 +53,25 @@ function playChime(): void {
   osc.stop(ctx.currentTime + 0.45);
 }
 
-function updateNotificationUI(): void {
-  if (!('Notification' in window)) {
-    notifStatusEl.textContent = 'Not Supported';
-    notifyBtn.disabled = true;
-    return;
-  }
-  if (window.location.protocol === 'file:') {
-    notifStatusEl.textContent = 'Needs HTTPS or Localhost';
-    return;
-  }
-  if (Notification.permission === 'granted') {
-    notifStatusEl.textContent = 'Alerts Active';
-    notifyBtn.textContent = 'Test Alert';
-  } else if (Notification.permission === 'denied') {
-    notifStatusEl.textContent = 'Alerts Blocked';
-  } else {
-    notifStatusEl.textContent = 'Alerts Off';
-  }
-}
-
-function triggerNotification(ev: CalendarEvent): void {
+function showInAppToast(ev: CalendarEvent): void {
   playChime();
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(`CalenderAuto: ${ev.title}`, {
-      body: ev.notes || `Scheduled right now (${ev.time})`,
-    });
-  }
+  const toast = document.createElement('div');
+  toast.className = 'toast-alert';
+  toast.style.borderLeftColor = ev.color;
+  toast.innerHTML = `
+    <div class="toast-header">
+      <span>Due Now • ${ev.time}</span>
+      <button type="button" style="padding:0.15rem 0.45rem;font-size:0.72rem;">Dismiss</button>
+    </div>
+    <div class="toast-title">${ev.title}</div>
+    ${ev.notes ? `<div class="toast-notes">${ev.notes}</div>` : ''}
+  `;
+
+  toast.querySelector('button')?.addEventListener('click', () => {
+    toast.remove();
+  });
+
+  toastContainerEl.appendChild(toast);
 }
 
 function checkDueEvents(): void {
@@ -93,7 +84,7 @@ function checkDueEvents(): void {
     if (!ev.notified && ev.date === todayKey && ev.time === currentTime) {
       ev.notified = true;
       updated = true;
-      triggerNotification(ev);
+      showInAppToast(ev);
     }
   });
 
@@ -210,38 +201,15 @@ function openModal(dateKey: string): void {
   modal.showModal();
 }
 
-notifyBtn.addEventListener('click', async () => {
-  if (!('Notification' in window)) {
-    notifStatusEl.textContent = 'Browser Unsupported';
-    return;
-  }
-  if (window.location.protocol === 'file:') {
-    notifStatusEl.textContent = 'Needs HTTPS or Localhost';
-    return;
-  }
-  if (Notification.permission === 'granted') {
-    triggerNotification({
-      id: 'test',
-      date: toDateKey(new Date()),
-      time: toTimeKey(new Date()),
-      title: 'Notifications are working!',
-      color: '#4f46e5',
-      notes: 'You will get alerted right on time.',
-    });
-    return;
-  }
-  const result = await Notification.requestPermission();
-  updateNotificationUI();
-  if (result === 'granted') {
-    triggerNotification({
-      id: 'test',
-      date: toDateKey(new Date()),
-      time: toTimeKey(new Date()),
-      title: 'Alerts Enabled!',
-      color: '#059669',
-      notes: 'You will now receive on-time event alerts.',
-    });
-  }
+document.getElementById('testAlertBtn')?.addEventListener('click', () => {
+  showInAppToast({
+    id: 'test',
+    date: toDateKey(new Date()),
+    time: toTimeKey(new Date()),
+    title: 'CalenderAuto Alert',
+    color: '#4f46e5',
+    notes: 'Your on-time event alerts will appear right here.',
+  });
 });
 
 form.addEventListener('submit', (e) => {
@@ -305,7 +273,6 @@ document.getElementById('exportIcsBtn')?.addEventListener('click', () => {
   link.click();
 });
 
-updateNotificationUI();
 renderAll();
 checkDueEvents();
 setInterval(checkDueEvents, 5000);
