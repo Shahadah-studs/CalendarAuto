@@ -35,7 +35,10 @@
           <button id="nextBtn" aria-label="Next Month">&rarr;</button>
           <h2 id="monthLabel">Month Year</h2>
         </div>
-        <div class="status-pill">Synced locally</div>
+        <div class="topbar-right">
+          <button id="themeToggleBtn" class="secondary">Dark Mode</button>
+          <div class="status-pill">Synced locally</div>
+        </div>
       </header>
 
       <div class="calendar-board">
@@ -52,7 +55,8 @@
 
   <dialog id="eventModal" class="modal">
     <form id="eventForm" method="dialog">
-      <h3>Schedule on CalenderAuto</h3>
+      <h3 id="modalHeading">Schedule on CalenderAuto</h3>
+      <input type="hidden" id="editEventId" />
       <label>
         Event Title
         <input type="text" id="eventTitle" placeholder="Team sync, Deep work..." required />
@@ -82,7 +86,7 @@
       </label>
       <div class="modal-actions">
         <button type="button" id="cancelModal" class="secondary">Cancel</button>
-        <button type="submit" class="primary">Save</button>
+        <button type="submit" id="saveEventBtn" class="primary">Save</button>
       </div>
     </form>
   </dialog>
@@ -90,4 +94,3 @@
   <script type="module" src="app.js"></script>
 </body>
 </html>
-
