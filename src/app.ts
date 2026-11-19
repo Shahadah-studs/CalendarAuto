@@ -8,14 +8,19 @@ interface CalendarEvent {
   notified?: boolean;
 }
 
+type ChimeType = 'bell' | 'retro' | 'pulse' | 'silent';
+
 const STORAGE_KEY = 'calenderauto_events_v1';
 const THEME_KEY = 'calenderauto_theme_v1';
 const SOUND_KEY = 'calenderauto_sound_v1';
+const MOOD_KEY = 'calenderauto_moods_v1';
 const BASE_TITLE = 'CalenderAuto';
 
 let viewDate = new Date();
 let selectedDateKey = toDateKey(new Date());
 let events: CalendarEvent[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let moods: Record<string, string> = JSON.parse(localStorage.getItem(MOOD_KEY) || '{}');
+let selectedSound: ChimeType = (localStorage.getItem(SOUND_KEY) as ChimeType) || 'bell';
 let audioCtx: AudioContext | null = null;
 let flashInterval: number | null = null;
 
@@ -30,6 +35,15 @@ const editEventIdInput = document.getElementById('editEventId') as HTMLInputElem
 const toastContainerEl = document.getElementById('toastContainer') as HTMLDivElement;
 const themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonElement;
 const soundSelect = document.getElementById('soundSelect') as HTMLSelectElement;
+const moodPickerEl = document.getElementById('moodPicker') as HTMLDivElement;
+
+soundSelect.value = selectedSound;
+
+soundSelect.addEventListener('change', () => {
+  selectedSound = soundSelect.value as ChimeType;
+  localStorage.setItem(SOUND_KEY, selectedSound);
+  playChime();
+});
 
 function applyTheme(dark: boolean): void {
   document.body.classList.toggle('dark', dark);
@@ -43,12 +57,6 @@ themeToggleBtn.addEventListener('click', () => {
 });
 
 applyTheme(localStorage.getItem(THEME_KEY) === 'dark');
-
-soundSelect.value = localStorage.getItem(SOUND_KEY) || 'bell';
-soundSelect.addEventListener('change', () => {
-  localStorage.setItem(SOUND_KEY, soundSelect.value);
-  playChime();
-});
 
 function toDateKey(d: Date): string {
   const y = d.getFullYear();
@@ -67,6 +75,19 @@ function saveEvents(): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
 }
 
+function saveMoods(): void {
+  localStorage.setItem(MOOD_KEY, JSON.stringify(moods));
+}
+
+function extractUrl(text: string): string | null {
+  const match = text.match(/https?:\/\/[^\s]+/i);
+  return match ? match[0] : null;
+}
+
+function stripUrl(text: string): string {
+  return text.replace(/https?:\/\/[^\s]+/gi, '').trim();
+}
+
 function unlockAudio(): void {
   if (!audioCtx) {
     audioCtx = new AudioContext();
@@ -79,56 +100,52 @@ function unlockAudio(): void {
 document.addEventListener('click', unlockAudio, { once: true });
 
 function playChime(): void {
-  const mode = soundSelect.value;
-  if (mode === 'silent') return;
-
+  if (selectedSound === 'silent') return;
   unlockAudio();
   if (!audioCtx) return;
 
   const now = audioCtx.currentTime;
 
-  if (mode === 'bell') {
+  if (selectedSound === 'bell') {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'sine';
     osc.frequency.setValueAtTime(880, now);
     osc.frequency.exponentialRampToValueAtTime(1320, now + 0.18);
-    gain.gain.setValueAtTime(0.16, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start(now);
-    osc.stop(now + 0.5);
-  } else if (mode === 'retro') {
+    osc.stop(now + 0.45);
+  } else if (selectedSound === 'retro') {
     const notes = [523.25, 659.25, 783.99, 1046.5];
     notes.forEach((freq, idx) => {
       if (!audioCtx) return;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.type = 'square';
-      const start = now + idx * 0.08;
-      osc.frequency.setValueAtTime(freq, start);
-      gain.gain.setValueAtTime(0.08, start);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.12);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+      gain.gain.setValueAtTime(0.14, now + idx * 0.09);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.14);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.start(start);
-      osc.stop(start + 0.12);
+      osc.start(now + idx * 0.09);
+      osc.stop(now + idx * 0.09 + 0.14);
     });
-  } else if (mode === 'pulse') {
+  } else if (selectedSound === 'pulse') {
     [0, 0.18].forEach((offset) => {
       if (!audioCtx) return;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.type = 'triangle';
-      const start = now + offset;
-      osc.frequency.setValueAtTime(960, start);
-      gain.gain.setValueAtTime(0.18, start);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.12);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(987.77, now + offset);
+      gain.gain.setValueAtTime(0.08, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.12);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.start(start);
-      osc.stop(start + 0.12);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.12);
     });
   }
 }
@@ -161,6 +178,9 @@ function showInAppToast(ev: CalendarEvent): void {
   playChime();
   startTabFlash(ev.title);
 
+  const linkUrl = extractUrl(ev.notes);
+  const cleanNotes = stripUrl(ev.notes);
+
   const toast = document.createElement('div');
   toast.className = 'toast-alert';
   toast.style.borderLeftColor = ev.color;
@@ -170,7 +190,8 @@ function showInAppToast(ev: CalendarEvent): void {
       <button type="button" style="padding:0.15rem 0.45rem;font-size:0.72rem;">Dismiss</button>
     </div>
     <div class="toast-title">${ev.title}</div>
-    ${ev.notes ? `<div class="toast-notes">${ev.notes}</div>` : ''}
+    ${cleanNotes ? `<div class="toast-notes">${cleanNotes}</div>` : ''}
+    ${linkUrl ? `<div><a class="join-link-btn" href="${linkUrl}" target="_blank" rel="noopener noreferrer">Join Link ↗</a></div>` : ''}
   `;
 
   toast.querySelector('button')?.addEventListener('click', () => {
@@ -202,7 +223,28 @@ function checkDueEvents(): void {
   }
 }
 
+moodPickerEl.querySelectorAll<HTMLButtonElement>('.mood-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const chosen = btn.dataset.mood || '';
+    if (moods[selectedDateKey] === chosen) {
+      delete moods[selectedDateKey];
+    } else {
+      moods[selectedDateKey] = chosen;
+    }
+    saveMoods();
+    renderAll();
+  });
+});
+
+function renderMoodBar(): void {
+  const activeMood = moods[selectedDateKey] || '';
+  moodPickerEl.querySelectorAll<HTMLButtonElement>('.mood-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mood === activeMood);
+  });
+}
+
 function renderAll(): void {
+  renderMoodBar();
   renderGrid();
   renderAgenda();
 }
@@ -226,7 +268,7 @@ function renderGrid(): void {
   for (let i = firstDay - 1; i >= 0; i--) {
     const cell = document.createElement('div');
     cell.className = 'day-cell other-month';
-    cell.innerHTML = `<div class="day-number">${prevMonthDays - i}</div>`;
+    cell.innerHTML = `<div class="day-header"><div class="day-number">${prevMonthDays - i}</div></div>`;
     gridEl.appendChild(cell);
   }
 
@@ -237,10 +279,22 @@ function renderGrid(): void {
     if (dateKey === todayKey) cell.classList.add('today');
     if (dateKey === selectedDateKey) cell.classList.add('selected');
 
+    const header = document.createElement('div');
+    header.className = 'day-header';
+
     const num = document.createElement('div');
     num.className = 'day-number';
     num.textContent = String(day);
-    cell.appendChild(num);
+    header.appendChild(num);
+
+    if (moods[dateKey]) {
+      const moodBadge = document.createElement('span');
+      moodBadge.className = 'day-mood';
+      moodBadge.textContent = moods[dateKey];
+      header.appendChild(moodBadge);
+    }
+
+    cell.appendChild(header);
 
     const dayEvents = events
       .filter((e) => e.date === dateKey)
@@ -285,6 +339,9 @@ function renderAgenda(): void {
   }
 
   dayEvents.forEach((ev) => {
+    const linkUrl = extractUrl(ev.notes);
+    const cleanNotes = stripUrl(ev.notes);
+
     const card = document.createElement('div');
     card.className = 'agenda-card';
     card.style.borderLeftColor = ev.color;
@@ -297,7 +354,8 @@ function renderAgenda(): void {
         </div>
       </div>
       <div style="font-weight:600;margin-top:0.25rem;">${ev.title}</div>
-      ${ev.notes ? `<div style="color:var(--muted);margin-top:0.2rem;font-size:0.78rem;">${ev.notes}</div>` : ''}
+      ${cleanNotes ? `<div style="color:var(--muted);margin-top:0.2rem;font-size:0.78rem;">${cleanNotes}</div>` : ''}
+      ${linkUrl ? `<div><a class="join-link-btn" href="${linkUrl}" target="_blank" rel="noopener noreferrer">Join Link ↗</a></div>` : ''}
     `;
 
     card.querySelector('.edit-btn')?.addEventListener('click', () => {
@@ -343,7 +401,7 @@ document.getElementById('testAlertBtn')?.addEventListener('click', () => {
     time: toTimeKey(new Date()),
     title: 'CalenderAuto Alert',
     color: '#4f46e5',
-    notes: 'Your on-time event alerts and tab flash are active.',
+    notes: 'Meeting links in notes become buttons! https://github.com',
   });
 });
 
@@ -415,7 +473,7 @@ document.getElementById('exportIcsBtn')?.addEventListener('click', () => {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CalenderAuto//EN'];
   events.forEach((ev) => {
     const dt = ev.date.replace(/-/g, '') + 'T' + ev.time.replace(':', '') + '00';
-    lines.push('BEGIN:VEVENT', 'UID:' + ev.id, 'DTSTART:' + dt, 'SUMMARY:' + ev.title, 'END:VEVENT');
+    lines.push('BEGIN:VEVENT', `UID:${ev.id}`, `DTSTART:${dt}`, `SUMMARY:${ev.title}`, 'END:VEVENT');
   });
   lines.push('END:VCALENDAR');
 
