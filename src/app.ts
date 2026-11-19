@@ -401,7 +401,7 @@ document.getElementById('testAlertBtn')?.addEventListener('click', () => {
     time: toTimeKey(new Date()),
     title: 'CalenderAuto Alert',
     color: '#4f46e5',
-    notes: 'Meeting links in notes become buttons! https://github.com',
+    notes: 'Meeting links in notes become buttons! https://shahadah-studs.github.io/CalendarAuto/',
   });
 });
 
