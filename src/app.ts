@@ -9,9 +9,14 @@ interface CalendarEvent {
 }
 
 const STORAGE_KEY = 'calenderauto_events_v1';
+const THEME_KEY = 'calenderauto_theme_v1';
+const BASE_TITLE = 'CalenderAuto';
+
 let viewDate = new Date();
 let selectedDateKey = toDateKey(new Date());
 let events: CalendarEvent[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let audioCtx: AudioContext | null = null;
+let flashInterval: number | null = null;
 
 const gridEl = document.getElementById('calendarGrid') as HTMLDivElement;
 const monthLabelEl = document.getElementById('monthLabel') as HTMLHeadingElement;
@@ -19,7 +24,23 @@ const agendaListEl = document.getElementById('dailyAgendaList') as HTMLDivElemen
 const selectedDateLabelEl = document.getElementById('selectedDateLabel') as HTMLHeadingElement;
 const modal = document.getElementById('eventModal') as HTMLDialogElement;
 const form = document.getElementById('eventForm') as HTMLFormElement;
+const modalHeadingEl = document.getElementById('modalHeading') as HTMLHeadingElement;
+const editEventIdInput = document.getElementById('editEventId') as HTMLInputElement;
 const toastContainerEl = document.getElementById('toastContainer') as HTMLDivElement;
+const themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonElement;
+
+function applyTheme(dark: boolean): void {
+  document.body.classList.toggle('dark', dark);
+  themeToggleBtn.textContent = dark ? 'Light Mode' : 'Dark Mode';
+  localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
+}
+
+themeToggleBtn.addEventListener('click', () => {
+  const isDark = !document.body.classList.contains('dark');
+  applyTheme(isDark);
+});
+
+applyTheme(localStorage.getItem(THEME_KEY) === 'dark');
 
 function toDateKey(d: Date): string {
   const y = d.getFullYear();
@@ -38,23 +59,61 @@ function saveEvents(): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
 }
 
-function playChime(): void {
-  const ctx = new AudioContext();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(880, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.18);
-  gain.gain.setValueAtTime(0.15, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.45);
+function unlockAudio(): void {
+  if (!audioCtx) {
+    audioCtx = new AudioContext();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
 }
+
+document.addEventListener('click', unlockAudio, { once: true });
+
+function playChime(): void {
+  unlockAudio();
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(1320, audioCtx.currentTime + 0.18);
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.45);
+}
+
+function startTabFlash(alertTitle: string): void {
+  stopTabFlash();
+  let toggle = false;
+  document.title = `🔔 ${alertTitle}`;
+  flashInterval = window.setInterval(() => {
+    toggle = !toggle;
+    document.title = toggle ? BASE_TITLE : `🔔 ${alertTitle}`;
+  }, 900);
+}
+
+function stopTabFlash(): void {
+  if (flashInterval !== null) {
+    clearInterval(flashInterval);
+    flashInterval = null;
+  }
+  document.title = BASE_TITLE;
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && toastContainerEl.children.length === 0) {
+    stopTabFlash();
+  }
+});
 
 function showInAppToast(ev: CalendarEvent): void {
   playChime();
+  startTabFlash(ev.title);
+
   const toast = document.createElement('div');
   toast.className = 'toast-alert';
   toast.style.borderLeftColor = ev.color;
@@ -69,6 +128,9 @@ function showInAppToast(ev: CalendarEvent): void {
 
   toast.querySelector('button')?.addEventListener('click', () => {
     toast.remove();
+    if (toastContainerEl.children.length === 0) {
+      stopTabFlash();
+    }
   });
 
   toastContainerEl.appendChild(toast);
@@ -81,7 +143,7 @@ function checkDueEvents(): void {
   let updated = false;
 
   events.forEach((ev) => {
-    if (!ev.notified && ev.date === todayKey && ev.time === currentTime) {
+    if (!ev.notified && ev.date === todayKey && ev.time <= currentTime) {
       ev.notified = true;
       updated = true;
       showInAppToast(ev);
@@ -142,6 +204,10 @@ function renderGrid(): void {
       chip.className = 'event-chip';
       chip.style.backgroundColor = ev.color;
       chip.textContent = `${ev.time} ${ev.title}`;
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEditModal(ev);
+      });
       cell.appendChild(chip);
     });
 
@@ -151,7 +217,7 @@ function renderGrid(): void {
     });
 
     cell.addEventListener('dblclick', () => {
-      openModal(dateKey);
+      openCreateModal(dateKey);
     });
 
     gridEl.appendChild(cell);
@@ -167,7 +233,7 @@ function renderAgenda(): void {
   agendaListEl.innerHTML = '';
 
   if (dayEvents.length === 0) {
-    agendaListEl.innerHTML = `<p style="font-size:0.82rem;color:#64748b;">No events scheduled. Double-click any day cell to add one.</p>`;
+    agendaListEl.innerHTML = `<p style="font-size:0.82rem;color:var(--muted);">No events scheduled. Double-click any day cell to add one.</p>`;
     return;
   }
 
@@ -178,13 +244,20 @@ function renderAgenda(): void {
     card.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span class="time">${ev.time}</span>
-        <button data-id="${ev.id}" style="padding:0.1rem 0.4rem;font-size:0.7rem;">Delete</button>
+        <div class="card-actions">
+          <button class="edit-btn" style="padding:0.1rem 0.4rem;font-size:0.7rem;">Edit</button>
+          <button class="del-btn" style="padding:0.1rem 0.4rem;font-size:0.7rem;">Delete</button>
+        </div>
       </div>
-      <div style="font-weight:600;margin-top:0.2rem;">${ev.title}</div>
-      ${ev.notes ? `<div style="color:#64748b;margin-top:0.2rem;font-size:0.78rem;">${ev.notes}</div>` : ''}
+      <div style="font-weight:600;margin-top:0.25rem;">${ev.title}</div>
+      ${ev.notes ? `<div style="color:var(--muted);margin-top:0.2rem;font-size:0.78rem;">${ev.notes}</div>` : ''}
     `;
 
-    card.querySelector('button')?.addEventListener('click', () => {
+    card.querySelector('.edit-btn')?.addEventListener('click', () => {
+      openEditModal(ev);
+    });
+
+    card.querySelector('.del-btn')?.addEventListener('click', () => {
       events = events.filter((item) => item.id !== ev.id);
       saveEvents();
       renderAll();
@@ -194,10 +267,25 @@ function renderAgenda(): void {
   });
 }
 
-function openModal(dateKey: string): void {
+function openCreateModal(dateKey: string): void {
+  modalHeadingEl.textContent = 'Schedule on CalenderAuto';
+  editEventIdInput.value = '';
   (document.getElementById('eventDate') as HTMLInputElement).value = dateKey;
+  (document.getElementById('eventTime') as HTMLInputElement).value = '09:00';
   (document.getElementById('eventTitle') as HTMLInputElement).value = '';
+  (document.getElementById('eventColor') as HTMLSelectElement).value = '#4f46e5';
   (document.getElementById('eventNotes') as HTMLTextAreaElement).value = '';
+  modal.showModal();
+}
+
+function openEditModal(ev: CalendarEvent): void {
+  modalHeadingEl.textContent = 'Edit Event';
+  editEventIdInput.value = ev.id;
+  (document.getElementById('eventDate') as HTMLInputElement).value = ev.date;
+  (document.getElementById('eventTime') as HTMLInputElement).value = ev.time;
+  (document.getElementById('eventTitle') as HTMLInputElement).value = ev.title;
+  (document.getElementById('eventColor') as HTMLSelectElement).value = ev.color;
+  (document.getElementById('eventNotes') as HTMLTextAreaElement).value = ev.notes;
   modal.showModal();
 }
 
@@ -208,71 +296,78 @@ document.getElementById('testAlertBtn')?.addEventListener('click', () => {
     time: toTimeKey(new Date()),
     title: 'CalenderAuto Alert',
     color: '#4f46e5',
-    notes: 'Your on-time event alerts will appear right here.',
+    notes: 'Your on-time event alerts and tab flash are active.',
   });
 });
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
+  const existingId = editEventIdInput.value;
   const title = (document.getElementById('eventTitle') as HTMLInputElement).value.trim();
-  const date = (document.getElementById('eventDate') as HTMLInputElement).value;
-  const time = (document.getElementById('eventTime') as HTMLInputElement).value;
-  const color = (document.getElementById('eventColor') as HTMLSelectElement).value;
-  const notes = (document.getElementById('eventNotes') as HTMLTextAreaElement).value.trim();
-
-  if (!title || !date) return;
-
-  events.push({
-    id: crypto.randomUUID(),
-    date,
-    time,
-    title,
-    color,
-    notes,
-    notified: false,
-  });
-
-  selectedDateKey = date;
-  saveEvents();
-  modal.close();
-  renderAll();
-  checkDueEvents();
+const date = (document.getElementById('eventDate') as HTMLInputElement).value; 
+const time = (document.getElementById('eventTime') as HTMLInputElement).value; 
+const color = (document.getElementById('eventColor') as HTMLSelectElement).value; 
+const notes = (document.getElementById('eventNotes') as HTMLTextAreaElement).value.trim();
+if (!title || !date) return;
+if (existingId) { 
+const index = events.findIndex((item) => item.id === existingId); 
+if (index !== -1) { 
+const prev = events[index]; 
+const rescheduled = prev.date !== date || prev.time !== time; 
+events[index] = { 
+...prev, 
+title, 
+date, 
+time, 
+color, 
+notes, 
+notified: rescheduled? false: prev.notified, 
+}; 
+} 
+} else { 
+events.push({ 
+id: crypto.randomUUID(), 
+date, 
+time, 
+title, 
+color, 
+notes, 
+notified: false, 
+}); 
+}
+selectedDateKey = date; 
+saveEvents(); 
+modal.close(); 
+renderAll(); 
+checkDueEvents(); 
 });
-
-document.getElementById('newEventBtn')?.addEventListener('click', () => openModal(selectedDateKey));
+document.getElementById('newEventBtn')?.addEventListener('click', () => openCreateModal(selectedDateKey)); 
 document.getElementById('cancelModal')?.addEventListener('click', () => modal.close());
-
-document.getElementById('prevBtn')?.addEventListener('click', () => {
-  viewDate.setMonth(viewDate.getMonth() - 1);
-  renderGrid();
+document.getElementById('prevBtn')?.addEventListener('click', () => { 
+viewDate.setMonth(viewDate.getMonth() - 1); 
+renderGrid(); 
 });
-
-document.getElementById('nextBtn')?.addEventListener('click', () => {
-  viewDate.setMonth(viewDate.getMonth() + 1);
-  renderGrid();
+document.getElementById('nextBtn')?.addEventListener('click', () => { 
+viewDate.setMonth(viewDate.getMonth() + 1); 
+renderGrid(); 
 });
-
-document.getElementById('todayBtn')?.addEventListener('click', () => {
-  viewDate = new Date();
-  selectedDateKey = toDateKey(viewDate);
-  renderAll();
+document.getElementById('todayBtn')?.addEventListener('click', () => { 
+viewDate = new Date(); 
+selectedDateKey = toDateKey(viewDate); 
+renderAll(); 
 });
-
-document.getElementById('exportIcsBtn')?.addEventListener('click', () => {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CalenderAuto//EN'];
-  events.forEach((ev) => {
-    const dt = ev.date.replace(/-/g, '') + 'T' + ev.time.replace(':', '') + '00';
-    lines.push('BEGIN:VEVENT', `UID:${ev.id}`, `DTSTART:${dt}`, `SUMMARY:${ev.title}`, 'END:VEVENT');
-  });
-  lines.push('END:VCALENDAR');
-
-  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'calender-auto.ics';
-  link.click();
+document.getElementById('exportIcsBtn')?.addEventListener('click', () => { 
+const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CalenderAuto//EN']; 
+events.forEach((ev) => { 
+const dt = ev.date.replace(/-/g, '') + 'T' + ev.time.replace(':', '') + '00'; 
+lines.push('BEGIN:VEVENT', UID:${ev.id}, DTSTART:${dt}, SUMMARY:${ev.title}, ' END:VEVENT' }) 
+;
+const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' }); 
+const link = document.createElement('a'); 
+link.href = URL.createObjectURL(blob); 
+link.download = 'calender-auto.ics'; 
+link.click(); 
 });
-
-renderAll();
-checkDueEvents();
+renderAll(); 
+checkDueEvents(); 
 setInterval(checkDueEvents, 5000);
