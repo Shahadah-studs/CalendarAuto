@@ -8,6 +8,12 @@ interface CalendarEvent {
   notified?: boolean;
 }
 
+interface MoodTip {
+  cls: string;
+  title: string;
+  message: string;
+}
+
 type ChimeType = 'bell' | 'retro' | 'pulse' | 'silent';
 
 const STORAGE_KEY = 'calenderauto_events_v1';
@@ -15,6 +21,29 @@ const THEME_KEY = 'calenderauto_theme_v1';
 const SOUND_KEY = 'calenderauto_sound_v1';
 const MOOD_KEY = 'calenderauto_moods_v1';
 const BASE_TITLE = 'CalenderAuto';
+
+const MOOD_TIPS: Record<string, MoodTip> = {
+  '⚡': {
+    cls: 'mood-energy',
+    title: '⚡ High Energy Mode!',
+    message: "Crush your toughest tasks today—and don't forget to drink water!",
+  },
+  '😊': {
+    cls: 'mood-good',
+    title: '😊 Great Vibes Today!',
+    message: 'Keep the momentum rolling, stay hydrated, and celebrate your wins!',
+  },
+  '😐': {
+    cls: 'mood-neutral',
+    title: '😐 Steady & Grounded',
+    message: 'Take it one step at a time today. Grab a glass of water and breathe!',
+  },
+  '😴': {
+    cls: 'mood-tired',
+    title: '😴 Low Battery Day',
+    message: 'Pace yourself, take short screen breaks, and drink some cold water!',
+  },
+};
 
 let viewDate = new Date();
 let selectedDateKey = toDateKey(new Date());
@@ -36,6 +65,7 @@ const toastContainerEl = document.getElementById('toastContainer') as HTMLDivEle
 const themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonElement;
 const soundSelect = document.getElementById('soundSelect') as HTMLSelectElement;
 const moodPickerEl = document.getElementById('moodPicker') as HTMLDivElement;
+const dailyMoodToastEl = document.getElementById('dailyMoodToast') as HTMLDivElement;
 
 soundSelect.value = selectedSound;
 
@@ -241,6 +271,23 @@ function renderMoodBar(): void {
   moodPickerEl.querySelectorAll<HTMLButtonElement>('.mood-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.mood === activeMood);
   });
+
+  const tip = MOOD_TIPS[activeMood];
+  if (tip) {
+    dailyMoodToastEl.className = `daily-mood-toast ${tip.cls}`;
+    dailyMoodToastEl.innerHTML = `
+      <div class="daily-toast-tag">Daily Mood Check-In</div>
+      <div class="daily-toast-title">${tip.title}</div>
+      <div class="daily-toast-msg">${tip.message}</div>
+    `;
+  } else {
+    dailyMoodToastEl.className = 'daily-mood-toast mood-default';
+    dailyMoodToastEl.innerHTML = `
+      <div class="daily-toast-tag">Daily Mood Check-In</div>
+      <div class="daily-toast-title">Good Day! ✨</div>
+      <div class="daily-toast-msg">Select a mood above for a daily boost—and don't forget to drink water!</div>
+    `;
+  }
 }
 
 function renderAll(): void {
@@ -401,7 +448,7 @@ document.getElementById('testAlertBtn')?.addEventListener('click', () => {
     time: toTimeKey(new Date()),
     title: 'CalenderAuto Alert',
     color: '#4f46e5',
-    notes: 'Meeting links in notes become buttons! https://shahadah-studs.github.io/CalendarAuto/',
+    notes: 'Meeting links in notes become buttons! https://github.com',
   });
 });
 
