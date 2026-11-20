@@ -2,7 +2,7 @@
 
 **CalenderAuto** is a browser-based monthly calendar and personal planning application built with vanilla TypeScript, HTML, and CSS. It supports local event storage, daily mood check-ins, in-app due-time alerts, custom alert sounds, light/dark themes, meeting URL extraction, and `.ics` calendar export.
 
-**Live demo:** [https://shahadah-studs.github.io/CalenderAuto/](https://shahadah-studs.github.io/CalenderAuto/)
+**Live demo:** [https://shahadah-studs.github.io/CalendarAuto/](https://shahadah-studs.github.io/CalendarAuto/)
 
 > [!NOTE]
 > The product name is also spelled `CalenderAuto` in the current UI and source code. The repository name is `CalenderAuto`.
