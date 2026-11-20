@@ -384,10 +384,19 @@ function renderGrid(): void {
 
   for (let day = 1; day <= totalDays; day++) {
     const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dayEvents = events
+      .filter((e) => e.date === dateKey)
+      .sort((a, b) => a.time.localeCompare(b.time));
+
     const cell = document.createElement('div');
     cell.className = 'day-cell';
     if (dateKey === todayKey) cell.classList.add('today');
     if (dateKey === selectedDateKey) cell.classList.add('selected');
+
+    if (dayEvents.length === 1) cell.classList.add('heat-1');
+    else if (dayEvents.length === 2) cell.classList.add('heat-2');
+    else if (dayEvents.length === 3) cell.classList.add('heat-3');
+    else if (dayEvents.length >= 4) cell.classList.add('heat-4');
 
     const header = document.createElement('div');
     header.className = 'day-header';
@@ -406,9 +415,8 @@ function renderGrid(): void {
 
     cell.appendChild(header);
 
-    const dayEvents = events
-      .filter((e) => e.date === dateKey)
-      .sort((a, b) => a.time.localeCompare(b.time));
+    const eventsWrapper = document.createElement('div');
+    eventsWrapper.className = 'cell-events-list';
 
     dayEvents.forEach((ev) => {
       const chip = document.createElement('div');
@@ -419,8 +427,10 @@ function renderGrid(): void {
         e.stopPropagation();
         openEditModal(ev);
       });
-      cell.appendChild(chip);
+      eventsWrapper.appendChild(chip);
     });
+
+    cell.appendChild(eventsWrapper);
 
     cell.addEventListener('click', () => {
       selectedDateKey = dateKey;
@@ -511,7 +521,7 @@ document.getElementById('testAlertBtn')?.addEventListener('click', () => {
     time: toTimeKey(new Date()),
     title: 'CalenderAuto Alert',
     color: '#4f46e5',
-    notes: 'Meeting links in notes become buttons! https://shahadah-studs.github.io/CalendarAuto/',
+    notes: 'Meeting links in notes become buttons! https://shahadah-studs.github.io/CalendarAuto',
   });
 });
 
