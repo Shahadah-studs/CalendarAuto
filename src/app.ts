@@ -120,7 +120,7 @@ function saveMoods(): void {
 
 function extractUrl(text: string): string | null {
   const match = text.match(/https?:\/\/[^\s]+/i);
-  return match ? match : null;
+  return match ? match[0] : null;
 }
 
 function stripUrl(text: string): string {
@@ -270,7 +270,7 @@ function updateLiveClockAndTicker(now: Date): void {
     .sort((a, b) => a.targetMs - b.targetMs);
 
   if (upcomingToday.length > 0) {
-    const next = upcomingToday;
+    const next = upcomingToday[0];
     const countdown = formatRemainingTime(next.targetMs, nowMs);
     statusPillEl.textContent = `${clockStr} • Next: ${next.ev.title} in ${countdown}`;
   } else {
