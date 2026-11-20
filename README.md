@@ -4,7 +4,8 @@
 
 **Live demo:** [https://shahadah-studs.github.io/CalendarAuto/](https://shahadah-studs.github.io/CalendarAuto/)
 
-> **Note:** The product name is also spelled `CalenderAuto` in the current UI and source code. The repository name is `CalendarAuto`.
+> [!NOTE]
+> The product name is also spelled `CalenderAuto` in the current UI and source code. The repository name is `CalendarAuto`.
 
 ## Features
 
