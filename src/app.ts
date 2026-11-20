@@ -45,8 +45,9 @@ const MOOD_TIPS: Record<string, MoodTip> = {
   },
 };
 
+let lastKnownTodayKey = toDateKey(new Date());
 let viewDate = new Date();
-let selectedDateKey = toDateKey(new Date());
+let selectedDateKey = lastKnownTodayKey;
 let events: CalendarEvent[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 let moods: Record<string, string> = JSON.parse(localStorage.getItem(MOOD_KEY) || '{}');
 let selectedSound: ChimeType = (localStorage.getItem(SOUND_KEY) as ChimeType) || 'bell';
@@ -66,6 +67,7 @@ const themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonEl
 const soundSelect = document.getElementById('soundSelect') as HTMLSelectElement;
 const moodPickerEl = document.getElementById('moodPicker') as HTMLDivElement;
 const dailyMoodToastEl = document.getElementById('dailyMoodToast') as HTMLDivElement;
+const statusPillEl = document.querySelector('.status-pill') as HTMLDivElement;
 
 soundSelect.value = selectedSound;
 
@@ -101,6 +103,13 @@ function toTimeKey(d: Date): string {
   return `${h}:${m}`;
 }
 
+function toClockDisplay(d: Date): string {
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const s = String(d.getSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
 function saveEvents(): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
 }
@@ -111,7 +120,7 @@ function saveMoods(): void {
 
 function extractUrl(text: string): string | null {
   const match = text.match(/https?:\/\/[^\s]+/i);
-  return match ? match[0] : null;
+  return match ? match : null;
 }
 
 function stripUrl(text: string): string {
@@ -234,12 +243,66 @@ function showInAppToast(ev: CalendarEvent): void {
   toastContainerEl.appendChild(toast);
 }
 
+function formatRemainingTime(targetMs: number, nowMs: number): string {
+  const diffSec = Math.max(0, Math.floor((targetMs - nowMs) / 1000));
+  const hrs = Math.floor(diffSec / 3600);
+  const mins = Math.floor((diffSec % 3600) / 60);
+  const secs = diffSec % 60;
+  if (hrs > 0) return `${hrs}h ${mins}m`;
+  if (mins > 0) return `${mins}m ${secs}s`;
+  return `${secs}s`;
+}
+
+function updateLiveClockAndTicker(now: Date): void {
+  if (!statusPillEl) return;
+  const clockStr = toClockDisplay(now);
+  const todayKey = toDateKey(now);
+  const nowMs = now.getTime();
+
+  const upcomingToday = events
+    .filter((ev) => ev.date === todayKey)
+    .map((ev) => {
+      const [hh, mm] = ev.time.split(':').map(Number);
+      const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+      return { ev, targetMs: target.getTime() };
+    })
+    .filter((item) => item.targetMs > nowMs)
+    .sort((a, b) => a.targetMs - b.targetMs);
+
+  if (upcomingToday.length > 0) {
+    const next = upcomingToday;
+    const countdown = formatRemainingTime(next.targetMs, nowMs);
+    statusPillEl.textContent = `${clockStr} • Next: ${next.ev.title} in ${countdown}`;
+  } else {
+    statusPillEl.textContent = `${clockStr} • Clear for today`;
+  }
+}
+
 function checkDueEvents(): void {
   const now = new Date();
   const todayKey = toDateKey(now);
   const currentTime = toTimeKey(now);
-  let updated = false;
 
+  if (todayKey !== lastKnownTodayKey) {
+    const wasViewingYesterday = selectedDateKey === lastKnownTodayKey;
+    const wasViewingCurrentMonth =
+      viewDate.getFullYear() === Number(lastKnownTodayKey.slice(0, 4)) &&
+      viewDate.getMonth() === Number(lastKnownTodayKey.slice(5, 7)) - 1;
+
+    lastKnownTodayKey = todayKey;
+
+    if (wasViewingYesterday) {
+      selectedDateKey = todayKey;
+    }
+    if (wasViewingCurrentMonth) {
+      viewDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+    renderAll();
+  }
+
+  updateLiveClockAndTicker(now);
+
+  let updated = false;
   events.forEach((ev) => {
     if (!ev.notified && ev.date === todayKey && ev.time <= currentTime) {
       ev.notified = true;
@@ -448,7 +511,7 @@ document.getElementById('testAlertBtn')?.addEventListener('click', () => {
     time: toTimeKey(new Date()),
     title: 'CalenderAuto Alert',
     color: '#4f46e5',
-    notes: 'Meeting links in notes become buttons! https://shahadah-studs.github.io/CalendarAuto/',
+    notes: 'Meeting links in notes become buttons! https://github.com',
   });
 });
 
@@ -533,4 +596,4 @@ document.getElementById('exportIcsBtn')?.addEventListener('click', () => {
 
 renderAll();
 checkDueEvents();
-setInterval(checkDueEvents, 5000);
+setInterval(checkDueEvents, 1000);
