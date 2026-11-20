@@ -7,6 +7,8 @@
 > [!NOTE]
 > The product name is also spelled `CalenderAuto` in the current UI and source code. The repository name is `CalendarAuto`.
 
+>[!IMPORTANT]
+> The Application is **NOT** mobile compatible yet, so please try to use it on tablet/laptop.
 ## Features
 
 ### Calendar management
